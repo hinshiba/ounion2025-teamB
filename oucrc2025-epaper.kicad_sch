@@ -5035,7 +5035,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "50b8ecfa-574e-46b6-9b21-59c5b8fc07ae")
-		(property "Reference" "SW4"
+		(property "Reference" "SW-L"
 			(at 266.7 102.362 0)
 			(effects
 				(font
@@ -5087,7 +5087,7 @@
 		(instances
 			(project "OUCRC-TeamB"
 				(path "/fdd8752d-23db-4ccf-bf63-6ba6f7291126"
-					(reference "SW4")
+					(reference "SW-L")
 					(unit 1)
 				)
 			)
@@ -7065,7 +7065,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "e81b11b8-1abe-488e-9ae3-4f837378acc1")
-		(property "Reference" "SW2"
+		(property "Reference" "SW-B"
 			(at 210.82 102.362 0)
 			(effects
 				(font
@@ -7117,7 +7117,7 @@
 		(instances
 			(project "OUCRC-TeamB"
 				(path "/fdd8752d-23db-4ccf-bf63-6ba6f7291126"
-					(reference "SW2")
+					(reference "SW-B")
 					(unit 1)
 				)
 			)
@@ -7132,7 +7132,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "efaff657-61db-411a-86ad-9bc1b0d1feec")
-		(property "Reference" "SW1"
+		(property "Reference" "SW-A"
 			(at 182.88 102.362 0)
 			(effects
 				(font
@@ -7184,7 +7184,7 @@
 		(instances
 			(project "OUCRC-TeamB"
 				(path "/fdd8752d-23db-4ccf-bf63-6ba6f7291126"
-					(reference "SW1")
+					(reference "SW-A")
 					(unit 1)
 				)
 			)
@@ -7199,7 +7199,7 @@
 		(on_board yes)
 		(dnp no)
 		(uuid "f3adc17f-5a91-447f-8ad7-a7d84853594c")
-		(property "Reference" "SW3"
+		(property "Reference" "SW-R"
 			(at 238.76 102.362 0)
 			(effects
 				(font
@@ -7251,7 +7251,7 @@
 		(instances
 			(project "OUCRC-TeamB"
 				(path "/fdd8752d-23db-4ccf-bf63-6ba6f7291126"
-					(reference "SW3")
+					(reference "SW-R")
 					(unit 1)
 				)
 			)

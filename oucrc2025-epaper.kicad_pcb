@@ -492,7 +492,7 @@
 		(at 140 122.5 180)
 		(descr "Generic 6mm SW tactile push button")
 		(tags "tact sw push 6mm")
-		(property "Reference" "SW2"
+		(property "Reference" "SW-B"
 			(at 3.25 -2 0)
 			(layer "F.SilkS")
 			(uuid "e5602d39-5038-4a08-85e3-0c697541ca68")
@@ -839,7 +839,7 @@
 		(at 95 115 180)
 		(descr "Generic 6mm SW tactile push button")
 		(tags "tact sw push 6mm")
-		(property "Reference" "SW4"
+		(property "Reference" "SW-L"
 			(at 3.25 -2 0)
 			(layer "F.SilkS")
 			(uuid "408f2e17-5cb4-4fdf-86fc-516a4da4d32a")
@@ -1920,7 +1920,7 @@
 		(at 112.75 115 180)
 		(descr "Generic 6mm SW tactile push button")
 		(tags "tact sw push 6mm")
-		(property "Reference" "SW3"
+		(property "Reference" "SW-R"
 			(at 3.25 -2 0)
 			(layer "F.SilkS")
 			(uuid "d26b7be3-64c8-446d-ac43-01360a73ec6a")
@@ -6251,7 +6251,7 @@
 		(at 154.5 108 180)
 		(descr "Generic 6mm SW tactile push button")
 		(tags "tact sw push 6mm")
-		(property "Reference" "SW1"
+		(property "Reference" "SW-A"
 			(at 3.25 -2 0)
 			(layer "F.SilkS")
 			(uuid "2602ad61-ad3d-4b1b-a9bf-78d7dd82539f")
