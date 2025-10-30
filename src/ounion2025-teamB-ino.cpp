@@ -11,16 +11,19 @@
 
 #define SERVO_PIN 47
 
+const int PIN_INPUT = 2;
+const long DEAD_TIME_MS = 500;  // 不感時間 (ミリ秒)
+
 SPIClass hspi(HSPI);
 Servo myservo;
 
 void setup() {
-    // ESP32PWM::allocateTimer(0);
-    // ESP32PWM::allocateTimer(1);
-    // ESP32PWM::allocateTimer(2);
-    // ESP32PWM::allocateTimer(3);
-    // myservo.setPeriodHertz(50);
-    // myservo.attach(SERVO_PIN, 1000, 2000);
+    ESP32PWM::allocateTimer(0);
+    ESP32PWM::allocateTimer(1);
+    ESP32PWM::allocateTimer(2);
+    ESP32PWM::allocateTimer(3);
+    myservo.setPeriodHertz(50);
+    myservo.attach(SERVO_PIN, 1000, 2000);
 
     Serial.begin(115200);
     Serial.println();
@@ -40,7 +43,7 @@ const char msg4[] = "sumomo, sularin, satoki";
 
 // 文字列のポインタ配列にまとめる
 const char* messages[] = {msg1, msg2, msg3, msg4};
-const int num_lines = 4;
+const int num_lines = 4;  // 行数
 
 void printmsg() {
     display.setFont(&FreeMonoBold9pt7b);
@@ -48,7 +51,7 @@ void printmsg() {
 
     int16_t tbx, tby;
     uint16_t tbw, tbh;
-    uint16_t x_coords[num_lines];
+    uint16_t x_coords[num_lines];  // 各行のX座標を格納する配列
 
     // display.getTextBounds(msg, 0, 0, &tbx, &tby, &tbw, &tbh);
     // // center the bounding box by transposition of the origin:
@@ -88,21 +91,29 @@ void printmsg() {
     }
 
     // 6. ページ描画ループ
-    display.setFullWindow();
-    display.firstPage();
-    do {
-        display.fillScreen(GxEPD_WHITE);
+    // display.setFullWindow();
+    // display.firstPage();
+    // do {
+    //     display.fillScreen(GxEPD_WHITE);
 
-        // 4行それぞれを描画
-        for (int i = 0; i < num_lines; i++) {
-            // 現在の行のY座標を計算 (Y座標は行送り分だけ下にずらす)
-            uint16_t current_y = y_start + (i * line_height);
+    //     // 4行それぞれを描画
+    //     for (int i = 0; i < num_lines; i++) {
+    //         // 現在の行のY座標を計算 (Y座標は行送り分だけ下にずらす)
+    //         uint16_t current_y = y_start + (i * line_height);
 
-            // 計算済みのX座標と、計算したY座標にカーソルをセット
-            display.setCursor(x_coords[i], current_y);
-            display.print(messages[i]);
-        }
-    } while (display.nextPage());
+    //         // 計算済みのX座標と、計算したY座標にカーソルをセット
+    //         display.setCursor(x_coords[i], current_y);
+    //         display.print(messages[i]);
+    //     }
+    // } while (display.nextPage());
+
+    display.fillScreen(GxEPD_WHITE);
+    for (int i = 0; i < num_lines; i++) {
+        uint16_t current_y = y_start + (i * line_height);
+        display.setCursor(x_coords[i], current_y);
+        display.print(messages[i]);
+    }
+    display.display();
 }
 
 void printimg() {
@@ -110,19 +121,22 @@ void printimg() {
     int16_t tbx, tby;
     uint16_t tbw, tbh;
     display.setFullWindow();
-    display.firstPage();
-    do {
-        // 3a. まず画面(の現在のページ)を白で塗りつぶす
-        display.fillScreen(GxEPD_BLACK);
+    // display.firstPage();
+    // do {
+    //     // 3a. まず画面(の現在のページ)を白で塗りつぶす
+    //     display.fillScreen(GxEPD_BLACK);
 
-        // 3b. 黒用のビットマップを描画
-        // drawBitmap(x座標, y座標, ビットマップデータ, 幅, 高さ, 色)
-        display.drawBitmap(0, 0, bitmap_white, 400, 300, GxEPD_WHITE);
+    //     // 3b. 黒用のビットマップを描画
+    //     // drawBitmap(x座標, y座標, ビットマップデータ, 幅, 高さ, 色)
+    //     display.drawBitmap(0, 0, bitmap_white, 400, 300, GxEPD_WHITE);
 
-        // 3c. カラー用のビットマップ描画を削除 (またはコメントアウト)
-        // うまく動かない
-        // display.drawBitmap(0, 0, bitmap_red, 64, 64, GxEPD_RED);
-    } while (display.nextPage());
+    //     // 3c. カラー用のビットマップ描画を削除 (またはコメントアウト)
+    //     // うまく動かない
+    //     // display.drawBitmap(0, 0, bitmap_red, 64, 64, GxEPD_RED);
+    // } while (display.nextPage());
+    display.fillScreen(GxEPD_BLACK);
+    display.drawBitmap(0, 0, bitmap_white, 400, 300, GxEPD_WHITE);
+    display.display();
 }
 
 void loop() {
@@ -130,15 +144,15 @@ void loop() {
     printmsg();
 
     delay(5000);
-    // for (pos = 0; pos <= 180; pos += 1) {
-    //     myservo.write(pos);
-    //     delay(15);
-    // }
+    for (pos = 0; pos <= 180; pos += 1) {
+        myservo.write(pos);
+        delay(15);
+    }
 
     printimg();
     delay(5000);
-    // for (pos = 180; pos >= 0; pos -= 1) {
-    //     myservo.write(pos);
-    //     delay(15);
-    // }
+    for (pos = 180; pos >= 0; pos -= 1) {
+        myservo.write(pos);
+        delay(15);
+    }
 };
