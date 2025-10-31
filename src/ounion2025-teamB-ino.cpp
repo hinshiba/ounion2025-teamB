@@ -11,29 +11,88 @@
 
 #define SERVO_PIN 47
 
-const int PIN_INPUT = 2;
-const long DEAD_TIME_MS = 500;  // 不感時間 (ミリ秒)
-
 SPIClass hspi(HSPI);
 Servo myservo;
 
+/* 入力管理 */
+const int BUTTONS[] = {1, 2, 3, 4};
+const unsigned long DEAD_TIME_MS = 2000;
+
+// loop()が実行されているタスクのハンドル
+TaskHandle_t mainTaskHandle = NULL;
+
+// 最後に割り込みが発生した時刻
+volatile unsigned long prev_input_time = 0;
+
+// prev_input_timeの安全な読み書きのため
+static portMUX_TYPE muxPrevInputTime = portMUX_INITIALIZER_UNLOCKED;
+
+void IRAM_ATTR input_isr() {
+    unsigned long now = millis();
+
+    /* -- グローバル変数の読み書き -- */
+    portENTER_CRITICAL_ISR(&muxPrevInputTime);
+    unsigned long prev = prev_input_time;
+
+    if (now < prev + DEAD_TIME_MS) {
+        /* 不感時間未経過 */
+        portEXIT_CRITICAL_ISR(&muxPrevInputTime);
+        return;
+    }
+
+    /* 前回時間を更新 */
+    prev_input_time = now;
+    portEXIT_CRITICAL_ISR(&muxPrevInputTime);
+    /* -- END グローバル変数の読み書き -- */
+
+    /* タスク通知 */
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if (mainTaskHandle != NULL) {
+        vTaskNotifyGiveFromISR(mainTaskHandle, &xHigherPriorityTaskWoken);
+    }
+
+    /* 現在実行中のタスクよりも優先度の高いタスクがReadyになったらyield */
+    if (xHigherPriorityTaskWoken) {
+        portYIELD_FROM_ISR();
+    }
+}
+
 void setup() {
+    Serial.begin(115200);
+    delay(1000);
+    Serial.println();
+    Serial.println("setup");
+
+    /* 入力管理 */
+    mainTaskHandle = xTaskGetCurrentTaskHandle;
+
+    if (mainTaskHandle == NULL) {
+        Serial.println("FATAL: mainTaskHandleの取得に失敗");
+        while (1);  // 致命的エラー
+    }
+
+    /* 割り込みの設定 */
+    for (int button : BUTTONS) {
+        pinMode(button, INPUT_PULLUP);
+
+        // 割り込みを設定
+        // digitalPinToInterrupt(pin): ピン番号を割り込み番号に変換
+        attachInterrupt(digitalPinToInterrupt(button), input_isr, FALLING);
+    }
+
+    /* epaper管理 */
+    hspi.begin(12, 13, 11, 10);
+    display.epd2.selectSPI(hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+    display.init(115200);
+
+    /* Servo管理 */
+
     ESP32PWM::allocateTimer(0);
     ESP32PWM::allocateTimer(1);
     ESP32PWM::allocateTimer(2);
     ESP32PWM::allocateTimer(3);
     myservo.setPeriodHertz(50);
     myservo.attach(SERVO_PIN, 1000, 2000);
-
-    Serial.begin(115200);
-    Serial.println();
-    Serial.println("setup");
-    delay(100);
-    hspi.begin(12, 13, 11, 10);
-    display.epd2.selectSPI(hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
-    display.init(115200);
-
-    // display.hibernate();
 }
 
 const char msg1[] = "OUnion TeamB";
@@ -141,7 +200,19 @@ void printimg() {
 
 void loop() {
     int pos = 0;
+    /* 初期動作 */
+
     printmsg();
+
+    /* 割り込み発生ピンの探索 */
+    for (int button : BUTTONS) {
+        if (digitalRead(button) == LOW) {
+            Serial.print("  -> トリガーピン検出: GPIO ");
+            Serial.println(pin);
+            pinTriggered = true;
+            break;
+        }
+    }
 
     delay(5000);
     for (pos = 0; pos <= 180; pos += 1) {
@@ -155,4 +226,9 @@ void loop() {
         myservo.write(pos);
         delay(15);
     }
-};
+
+    /* 割り込み待機 */
+    Serial.println("Block Task for ISR wait");
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    Serial.println("Run Task");
+}
