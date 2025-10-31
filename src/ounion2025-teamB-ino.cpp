@@ -15,7 +15,9 @@ SPIClass hspi(HSPI);
 Servo myservo;
 
 /* 入力管理 */
-const int BUTTONS[] = {1, 2, 3, 4};
+enum ButtonType { BTN_A = 38, BTN_B = 37, BTN_R = 36, BTN_L = 35 };
+
+const int BUTTONS[] = {BTN_A, BTN_B, BTN_R, BTN_L};
 const unsigned long DEAD_TIME_MS = 2000;
 
 // loop()が実行されているタスクのハンドル
@@ -57,6 +59,36 @@ void IRAM_ATTR input_isr() {
     }
 }
 
+/* 電子ペーパー管理 */
+const int APP_NUM = 2;
+
+enum UiApps {
+    ImageView,
+    TextView,
+};
+
+typedef struct {
+    UiApps app;
+    int imgidx;
+} UiState;
+
+static UiState ui_state;
+
+typedef struct {
+    uint16_t width;
+    uint16_t height;
+    const uint8_t* img;
+} Img;
+
+/* 画像登録 */
+const Img KOTOKEMO = {
+    .width = 400,
+    .height = 300,
+    .img = kotoandkemo,
+};
+
+const Img IMGS[] = {KOTOKEMO};
+
 void setup() {
     Serial.begin(115200);
     delay(1000);
@@ -64,7 +96,7 @@ void setup() {
     Serial.println("setup");
 
     /* 入力管理 */
-    mainTaskHandle = xTaskGetCurrentTaskHandle;
+    mainTaskHandle = xTaskGetCurrentTaskHandle();
 
     if (mainTaskHandle == NULL) {
         Serial.println("FATAL: mainTaskHandleの取得に失敗");
@@ -84,9 +116,10 @@ void setup() {
     hspi.begin(12, 13, 11, 10);
     display.epd2.selectSPI(hspi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
     display.init(115200);
+    ui_state.app = ImageView;
+    ui_state.imgidx = 0;
 
     /* Servo管理 */
-
     ESP32PWM::allocateTimer(0);
     ESP32PWM::allocateTimer(1);
     ESP32PWM::allocateTimer(2);
@@ -149,23 +182,6 @@ void printmsg() {
         x_coords[i] = ((display.width() - tbw) / 2) - tbx;
     }
 
-    // 6. ページ描画ループ
-    // display.setFullWindow();
-    // display.firstPage();
-    // do {
-    //     display.fillScreen(GxEPD_WHITE);
-
-    //     // 4行それぞれを描画
-    //     for (int i = 0; i < num_lines; i++) {
-    //         // 現在の行のY座標を計算 (Y座標は行送り分だけ下にずらす)
-    //         uint16_t current_y = y_start + (i * line_height);
-
-    //         // 計算済みのX座標と、計算したY座標にカーソルをセット
-    //         display.setCursor(x_coords[i], current_y);
-    //         display.print(messages[i]);
-    //     }
-    // } while (display.nextPage());
-
     display.fillScreen(GxEPD_WHITE);
     for (int i = 0; i < num_lines; i++) {
         uint16_t current_y = y_start + (i * line_height);
@@ -175,60 +191,71 @@ void printmsg() {
     display.display();
 }
 
-void printimg() {
-    const uint8_t* bitmap_white = gakusai_monoc;
-    int16_t tbx, tby;
-    uint16_t tbw, tbh;
+void print_mono_img(Img img, bool need_fill) {
     display.setFullWindow();
-    // display.firstPage();
-    // do {
-    //     // 3a. まず画面(の現在のページ)を白で塗りつぶす
-    //     display.fillScreen(GxEPD_BLACK);
-
-    //     // 3b. 黒用のビットマップを描画
-    //     // drawBitmap(x座標, y座標, ビットマップデータ, 幅, 高さ, 色)
-    //     display.drawBitmap(0, 0, bitmap_white, 400, 300, GxEPD_WHITE);
-
-    //     // 3c. カラー用のビットマップ描画を削除 (またはコメントアウト)
-    //     // うまく動かない
-    //     // display.drawBitmap(0, 0, bitmap_red, 64, 64, GxEPD_RED);
-    // } while (display.nextPage());
-    display.fillScreen(GxEPD_BLACK);
-    display.drawBitmap(0, 0, bitmap_white, 400, 300, GxEPD_WHITE);
+    if (need_fill) {
+        display.fillScreen(GxEPD_BLACK);
+    }
+    display.drawBitmap(0, 0, img.img, img.width, img.height, GxEPD_WHITE);
     display.display();
 }
 
 void loop() {
     int pos = 0;
-    /* 初期動作 */
-
-    printmsg();
-
-    /* 割り込み発生ピンの探索 */
-    for (int button : BUTTONS) {
-        if (digitalRead(button) == LOW) {
-            Serial.print("  -> トリガーピン検出: GPIO ");
-            Serial.println(pin);
-            pinTriggered = true;
-            break;
-        }
-    }
-
-    delay(5000);
-    for (pos = 0; pos <= 180; pos += 1) {
-        myservo.write(pos);
-        delay(15);
-    }
-
-    printimg();
-    delay(5000);
-    for (pos = 180; pos >= 0; pos -= 1) {
-        myservo.write(pos);
-        delay(15);
-    }
+    int button_num = 0;
 
     /* 割り込み待機 */
     Serial.println("Block Task for ISR wait");
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     Serial.println("Run Task");
+
+    /* 割り込み発生ピンの探索 */
+    for (int button : BUTTONS) {
+        if (digitalRead(button) == LOW) {
+            button_num = button;
+            break;
+        }
+    }
+
+    if (button_num == 0) {
+        /* なにが割り込み要因か特定できなかった */
+        Serial.println("Error: trigger button not found");
+        return;
+    }
+
+    /* UI計算 */
+    /* App切り替えか */
+    Serial.println(ui_state.app);
+    Serial.println(ui_state.imgidx);
+    if (button_num == BTN_B && ui_state.app > 0) {
+        ui_state.app = ImageView;
+    } else if (button_num == BTN_B && ui_state.app + 1 < APP_NUM) {
+        ui_state.app = TextView;
+    } else {
+        /* Img切り替えか */
+        if (ui_state.app == ImageView) {
+            if (button_num == BTN_L && ui_state.imgidx > 0) {
+                ui_state.imgidx--;
+                print_mono_img(IMGS[ui_state.imgidx], true);
+            } else if (button_num == BTN_R &&
+                       ui_state.imgidx + 1 < sizeof(IMGS)) {
+                ui_state.imgidx++;
+                print_mono_img(IMGS[ui_state.imgidx], true);
+            }
+        } else if (ui_state.app == TextView) {
+            printmsg();
+        }
+    }
+
+    for (pos = 0; pos <= 180; pos += 1) {
+        myservo.write(pos);
+        delay(15);
+    }
+    delay(2000);
+
+    for (pos = 180; pos >= 0; pos -= 1) {
+        myservo.write(pos);
+        delay(15);
+    }
+    delay(2000);
 }
