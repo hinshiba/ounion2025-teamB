@@ -8,7 +8,10 @@
 #include "Fonts/FreeMonoBold9pt7b.h"
 #include "GxEPD2_3C.h"
 #include "GxEPD2_display_selection_new_style.h"
+
+/* IMGS */
 #include "koto-and-kemo.h"
+#include "koto-densan.h"
 
 SPIClass hspi(HSPI);
 
@@ -88,8 +91,14 @@ const Img KOTOKEMO = {
     .img = kotoandkemo,
 };
 
-const int IMG_NUM = 1;
-const Img IMGS[] = {KOTOKEMO};
+const Img KOTODENSAN = {
+    .width = 400,
+    .height = 300,
+    .img = kotodensan,
+};
+
+const int IMG_NUM = 2;
+const Img IMGS[] = {KOTOKEMO, KOTODENSAN};
 
 /* サーボモータ関連 */
 #define SERVO_PIN 47
@@ -230,7 +239,7 @@ void printmsg() {
         x_coords[i] = ((display.width() - tbw) / 2) - tbx;
     }
 
-    display.fillScreen(GxEPD_WHITE);
+    display.fillScreen(GxEPD_RED);
     for (int i = 0; i < num_lines; i++) {
         uint16_t current_y = y_start + (i * line_height);
         display.setCursor(x_coords[i], current_y);
