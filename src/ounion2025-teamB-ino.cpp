@@ -1,5 +1,6 @@
 
 
+#include <Adafruit_NeoPixel.h>
 #include <Arduino.h>
 #include <ESP32Servo.h>
 #include <GxEPD2_BW.h>
@@ -55,6 +56,9 @@ void IRAM_ATTR input_isr() {
         portYIELD_FROM_ISR();
     }
 }
+
+/* LED管理 */
+Adafruit_NeoPixel leds(/* LED NUM */ 1, /* PIN */ 48, NEO_GRB + NEO_KHZ800);
 
 /* 電子ペーパー管理 */
 const int APP_NUM = 2;
@@ -137,6 +141,11 @@ void setup() {
         // digitalPinToInterrupt(pin): ピン番号を割り込み番号に変換
         attachInterrupt(digitalPinToInterrupt(button), input_isr, FALLING);
     }
+
+    /* LED管理 */
+    leds.begin();
+    leds.clear();
+    leds.show();
 
     /* epaper管理 */
     hspi.begin(12, 13, 11, 10);
@@ -271,9 +280,13 @@ void loop() {
     Serial.println(ui_state.imgidx);
     if (button_num == BTN_B && ui_state.app > 0) {
         ui_state.app = ImageView;
+        leds.setPixelColor(0, leds.Color(50, 0, 0));
+        leds.show();
         print_mono_img(IMGS[ui_state.imgidx], true);
     } else if (button_num == BTN_A && ui_state.app + 1 < APP_NUM) {
         ui_state.app = TextView;
+        leds.setPixelColor(0, leds.Color(0, 50, 0));
+        leds.show();
         printmsg();
     } else {
         /* Img切り替えか */
