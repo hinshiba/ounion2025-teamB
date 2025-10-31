@@ -229,8 +229,10 @@ void loop() {
     Serial.println(ui_state.imgidx);
     if (button_num == BTN_B && ui_state.app > 0) {
         ui_state.app = ImageView;
-    } else if (button_num == BTN_B && ui_state.app + 1 < APP_NUM) {
+        print_mono_img(IMGS[ui_state.imgidx], true);
+    } else if (button_num == BTN_A && ui_state.app + 1 < APP_NUM) {
         ui_state.app = TextView;
+        printmsg();
     } else {
         /* Img切り替えか */
         if (ui_state.app == ImageView) {
