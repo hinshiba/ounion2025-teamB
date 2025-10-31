@@ -9,10 +9,7 @@
 #include "GxEPD2_display_selection_new_style.h"
 #include "koto-and-kemo.h"
 
-#define SERVO_PIN 47
-
 SPIClass hspi(HSPI);
-Servo myservo;
 
 /* 入力管理 */
 enum ButtonType { BTN_A = 38, BTN_B = 37, BTN_R = 36, BTN_L = 35 };
@@ -87,13 +84,42 @@ const Img KOTOKEMO = {
     .img = kotoandkemo,
 };
 
+const int IMG_NUM = 1;
 const Img IMGS[] = {KOTOKEMO};
+
+/* サーボモータ関連 */
+#define SERVO_PIN 47
+Servo myservo;
+TaskHandle_t servoTaskHandle = NULL;
+
+void servoTask(void* _pvParameters) {
+    while (true) {
+        /* Blockにする */
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        Serial.println("Servo Task: RUN");
+        int pos = 10;
+        for (pos = 10; pos <= 170; pos += 1) {
+            myservo.write(pos);
+            vTaskDelay(pdMS_TO_TICKS(15));
+        }
+        vTaskDelay(pdMS_TO_TICKS(2000));
+
+        for (pos = 170; pos >= 10; pos -= 1) {
+            myservo.write(pos);
+            vTaskDelay(pdMS_TO_TICKS(15));
+        }
+        vTaskDelay(pdMS_TO_TICKS(2000));
+    }
+}
 
 void setup() {
     Serial.begin(115200);
     delay(1000);
     Serial.println();
     Serial.println("setup");
+
+    Serial.print("setup() Run in Core ");
+    Serial.println(xPortGetCoreID());
 
     /* 入力管理 */
     mainTaskHandle = xTaskGetCurrentTaskHandle();
@@ -126,6 +152,19 @@ void setup() {
     ESP32PWM::allocateTimer(3);
     myservo.setPeriodHertz(50);
     myservo.attach(SERVO_PIN, 1000, 2000);
+    xTaskCreatePinnedToCore(servoTask,    // 実行するタスク関数
+                            "ServoTask",  // タスク名 (デバッグ用)
+                            4096,         // スタックサイズ (Word単位)
+                            NULL,         // タスクに渡す引数 (今回はNULL)
+                            1,            // タスクの優先度 (loop()と同じ1でOK)
+                            &servoTaskHandle,  // タスクハンドルを格納する変数
+                            0                  // 実行するコア (Core 0)
+    );
+
+    if (servoTaskHandle == NULL) {
+        Serial.println("FATAL: Servo Taskの作成に失敗");
+        while (1);  // 致命的エラー
+    }
 }
 
 const char msg1[] = "OUnion TeamB";
@@ -223,6 +262,9 @@ void loop() {
         return;
     }
 
+    /* サーボ駆動 */
+    xTaskNotifyGive(servoTaskHandle);
+
     /* UI計算 */
     /* App切り替えか */
     Serial.println(ui_state.app);
@@ -239,8 +281,7 @@ void loop() {
             if (button_num == BTN_L && ui_state.imgidx > 0) {
                 ui_state.imgidx--;
                 print_mono_img(IMGS[ui_state.imgidx], true);
-            } else if (button_num == BTN_R &&
-                       ui_state.imgidx + 1 < sizeof(IMGS)) {
+            } else if (button_num == BTN_R && ui_state.imgidx + 1 < IMG_NUM) {
                 ui_state.imgidx++;
                 print_mono_img(IMGS[ui_state.imgidx], true);
             }
@@ -248,16 +289,4 @@ void loop() {
             printmsg();
         }
     }
-
-    for (pos = 0; pos <= 180; pos += 1) {
-        myservo.write(pos);
-        delay(15);
-    }
-    delay(2000);
-
-    for (pos = 180; pos >= 0; pos -= 1) {
-        myservo.write(pos);
-        delay(15);
-    }
-    delay(2000);
 }
